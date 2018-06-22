@@ -51,10 +51,12 @@ public final class MindfulService {
 	/// - healthDataUnavilable: HealthKit reports data is unavailable (i.e. running on iPad)
 	/// - heathKitNotAuthorized: HelathKit reports we do not have authorization
 	/// - healthKitNoSamples: No Samples were returned from HealthKit
+	/// - healthKitError: There was an issue in interfacing with the HealthKit System
 	public enum MindfulServiceError: Error {
 		case healthDataUnavilable
 		case heathKitNotAuthorized
 		case healthKitNoSamples
+		case healthKitError
 	}
 	
 	public enum MindfulResultType {
@@ -68,7 +70,10 @@ public final class MindfulService {
 			return
 		}
 		
-		let mindfulRead = HKObjectType.categoryType(forIdentifier: .mindfulSession)!
+		guard let mindfulRead = HKObjectType.categoryType(forIdentifier: .mindfulSession) else {
+			completion(.failure(.healthKitError))
+			return
+		}
 		
 		self.healthStore.requestAuthorization(toShare: [mindfulRead], read: [mindfulRead]) { [weak self] (success, error) in
 			
@@ -76,43 +81,50 @@ public final class MindfulService {
 			
 			if success == true {
 				
-				let mindfulnessSampleType = HKSampleType.categoryType(forIdentifier: .mindfulSession)!
+				guard let mindfulnessSampleType = HKSampleType.categoryType(forIdentifier: .mindfulSession) else {
+					DispatchQueue.main.async {
+						completion(.failure(.healthKitError))
+					}
+					return
+				}
 				
 				let query = HKSampleQuery(sampleType: mindfulnessSampleType,
 										  predicate: nil,
 										  limit: self.heatlhSampleLimit,
 										  sortDescriptors: nil,
 										  resultsHandler: { (query, sample, error) in
-					
-					guard let samples = sample else {
-						DispatchQueue.main.async {
-							completion(.failure(.healthKitNoSamples))
-						}
-						return
-					}
 											
-					guard samples.count > 0 else {
-						/// technically a success, just exit early
-						/// so we don't do any pointless computation
-						DispatchQueue.main.async {
-							completion(.success(0))
-						}
-						return
-					}
-					
-					var total = 0
-					for sample in samples {
-						let start = sample.startDate
-						let end = sample.endDate
-						let elapsed = Int(end.timeIntervalSince(start))
-						total += elapsed
-					}
+											guard let samples = sample else {
+												DispatchQueue.main.async {
+													completion(.failure(.healthKitNoSamples))
+												}
+												return
+											}
 											
-					total /= 60 //convert to minutes
+											guard samples.count > 0 else {
+												/// technically a success, just exit early
+												/// so we don't do any pointless computation
+												DispatchQueue.main.async {
+													completion(.success(0))
+												}
+												return
+											}
 											
-					DispatchQueue.main.async {
-						completion(.success(total))
-					}
+											var total = 0
+											
+											let doubleTotal = samples.map {
+												let start = $0.startDate
+												let end = $0.endDate
+												let elapsed = end.timeIntervalSince(start)
+												return elapsed
+												}.reduce(0.0, +)
+											
+											//convert to minutes
+											total = Int(floor(doubleTotal / 60))
+											
+											DispatchQueue.main.async {
+												completion(.success(total))
+											}
 				})
 				
 				self.healthStore.execute(query)
