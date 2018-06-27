@@ -64,6 +64,87 @@ public final class MindfulService {
 		case failure(MindfulServiceError)
 	}
 	
+	public func totalMindfulnessMinutesForToday(_ completion: @escaping (MindfulResultType) -> Void) {
+		guard isHealthDataAvailable() == true else {
+			completion(.failure(.healthDataUnavilable))
+			return
+		}
+		
+		guard let mindfulRead = HKObjectType.categoryType(forIdentifier: .mindfulSession) else {
+			completion(.failure(.healthKitError))
+			return
+		}
+		
+		self.healthStore.requestAuthorization(toShare: [mindfulRead], read: [mindfulRead]) { [weak self] (success, error) in
+			
+			guard let `self` = self else { return }
+			
+			if success == true {
+				
+				guard let mindfulnessSampleType = HKSampleType.categoryType(forIdentifier: .mindfulSession) else {
+					DispatchQueue.main.async {
+						completion(.failure(.healthKitError))
+					}
+					return
+				}
+				
+				let cal = Calendar.current
+				let end = Date()
+				let start = cal.startOfDay(for: end)
+				
+				let predicate = HKSampleQuery.predicateForSamples(withStart: start,
+																  end: end,
+																  options: [])
+				
+				let query = HKSampleQuery(sampleType: mindfulnessSampleType,
+										  predicate: predicate,
+										  limit: self.heatlhSampleLimit,
+										  sortDescriptors: nil,
+										  resultsHandler: { (query, sample, error) in
+											
+											guard let samples = sample else {
+												DispatchQueue.main.async {
+													completion(.failure(.healthKitNoSamples))
+												}
+												return
+											}
+											
+											guard samples.count > 0 else {
+												/// technically a success, just exit early
+												/// so we don't do any pointless computation
+												DispatchQueue.main.async {
+													completion(.success(0))
+												}
+												return
+											}
+											
+											var total = 0
+											
+											let doubleTotal = samples.map {
+												let start = $0.startDate
+												let end = $0.endDate
+												let elapsed = end.timeIntervalSince(start)
+												return elapsed
+												}.reduce(0.0, +)
+											
+											//convert to minutes
+											total = Int(floor(doubleTotal / 60))
+											
+											DispatchQueue.main.async {
+												completion(.success(total))
+											}
+				})
+				
+				self.healthStore.execute(query)
+			}
+			else {
+				DispatchQueue.main.async {
+					completion(.failure(.heathKitNotAuthorized))
+				}
+			}
+		}
+	}
+	
 	public func totalMindfulnessMinutes(completion: @escaping (MindfulResultType) -> Void) {
 		guard isHealthDataAvailable() == true else {
 			completion(.failure(.healthDataUnavilable))
@@ -117,7 +198,7 @@ public final class MindfulService {
 												let end = $0.endDate
 												let elapsed = end.timeIntervalSince(start)
 												return elapsed
-												}.reduce(0.0, +)
+											}.reduce(0.0, +)
 											
 											//convert to minutes
 											total = Int(floor(doubleTotal / 60))
