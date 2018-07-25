@@ -64,6 +64,17 @@ public final class MindfulService {
 		case failure(MindfulServiceError)
 	}
 	
+	private func predicateBuilder(with startDate: Date?, endDate: Date?) -> NSPredicate {
+		let start = startDate ?? nil
+		let end = endDate ?? Date()
+		
+		let predicate = HKSampleQuery.predicateForSamples(withStart: start,
+														  end: end,
+														  options: [])
+		
+		return predicate
+	}
+	
 	public func totalMindfulnessMinutesForToday(_ completion: @escaping (MindfulResultType) -> Void) {
 		guard isHealthDataAvailable() == true else {
 			completion(.failure(.healthDataUnavilable))
@@ -88,13 +99,8 @@ public final class MindfulService {
 					return
 				}
 				
-				let cal = Calendar.current
-				let end = Date()
-				let start = cal.startOfDay(for: end)
-				
-				let predicate = HKSampleQuery.predicateForSamples(withStart: start,
-																  end: end,
-																  options: [])
+				let start = Date.startOfToday()
+				let predicate = self.predicateBuilder(with: start, endDate: nil)
 				
 				let query = HKSampleQuery(sampleType: mindfulnessSampleType,
 										  predicate: predicate,
