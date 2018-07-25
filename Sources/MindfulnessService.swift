@@ -35,6 +35,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import Foundation
 import HealthKit
 
+extension Date {
+	public static func startOfToday(_ calendar: Calendar = Calendar.current) -> Date {
+		let today = Date()
+		let start = calendar.startOfDay(for: today)
+		return start
+	}
+}
+
 public final class MindfulService {
 	public static let defaultService = MindfulService()
 	private let healthStore = HKHealthStore()
