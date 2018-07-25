@@ -73,7 +73,7 @@ public final class MindfulService {
 	}
 	
 	private func predicateBuilder(with startDate: Date?, endDate: Date?) -> NSPredicate {
-		let start = startDate ?? nil
+		let start = startDate
 		let end = endDate ?? Date()
 		
 		let predicate = HKSampleQuery.predicateForSamples(withStart: start,
