@@ -36,6 +36,11 @@ import Foundation
 import HealthKit
 
 extension Date {
+	
+	/// Returns a Date object corresponding to start of today
+	///
+	/// - Parameter calendar: optional calendar to use
+	/// - Returns: Date which todays date at the beginning of today
 	public static func startOfToday(_ calendar: Calendar = Calendar.current) -> Date {
 		let today = Date()
 		let start = calendar.startOfDay(for: today)
@@ -89,12 +94,12 @@ public final class MindfulService {
 			return
 		}
 		
-		guard let mindfulRead = HKObjectType.categoryType(forIdentifier: .mindfulSession) else {
+		guard let mindfulMinutesData = HKObjectType.categoryType(forIdentifier: .mindfulSession) else {
 			completion(.failure(.healthKitError))
 			return
 		}
 		
-		self.healthStore.requestAuthorization(toShare: [mindfulRead], read: [mindfulRead]) { [weak self] (success, error) in
+		self.healthStore.requestAuthorization(toShare: [mindfulMinutesData], read: [mindfulMinutesData]) { [weak self] (success, error) in
 			
 			guard let `self` = self else { return }
 			
@@ -165,12 +170,12 @@ public final class MindfulService {
 			return
 		}
 		
-		guard let mindfulRead = HKObjectType.categoryType(forIdentifier: .mindfulSession) else {
+		guard let mindfulMinutesData = HKObjectType.categoryType(forIdentifier: .mindfulSession) else {
 			completion(.failure(.healthKitError))
 			return
 		}
 		
-		self.healthStore.requestAuthorization(toShare: [mindfulRead], read: [mindfulRead]) { [weak self] (success, error) in
+		self.healthStore.requestAuthorization(toShare: [mindfulMinutesData], read: [mindfulMinutesData]) { [weak self] (success, error) in
 			
 			guard let `self` = self else { return }
 			
@@ -212,7 +217,7 @@ public final class MindfulService {
 												let end = $0.endDate
 												let elapsed = end.timeIntervalSince(start)
 												return elapsed
-											}.reduce(0.0, +)
+												}.reduce(0.0, +)
 											
 											//convert to minutes
 											total = Int(floor(doubleTotal / 60))
